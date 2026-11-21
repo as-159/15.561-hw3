@@ -1,4 +1,4 @@
-"""Build the findings webpage, docs/index.html, with Plotly charts.
+"""Build the findings website in docs/: an overview and 3 tabs.
 
 Usage: python build_site.py [xlsx_path]
 Every number on the page is computed by analysis.py at build time.
@@ -162,7 +162,7 @@ for country, color in (("USA", BLUE), ("UK", ORANGE)):
         hovertemplate="<b>%{text}</b> · %{customdata[0]}<br>Orders: %{x}<br>Avg order value: $%{y:,.0f}"
                       "<br>Net revenue: $%{customdata[1]:,.0f}<br>Customers: %{customdata[2]}<extra></extra>"))
 style(q2_scatter, height=460,
-      xaxis=dict(title="Number of orders (Jul 1996 – May 1998)", range=[20, 175]),
+      xaxis=dict(title="Number of orders (Jul 1996 – May 1998)", range=[0, 195]),
       yaxis=dict(title="Average net value per order ($)", tickprefix="$", range=[900, 2000]))
 
 rr = r2["run_rate"].reindex(reps.Rep)
@@ -234,17 +234,11 @@ pairs_table = table(
     {"Lift": lambda v: f"{v:.2f}×", "% of B orders with A": pct0, "Fisher p": pval,
      "Significant after correction": lambda v: "Yes" if v else "No", "Orders together": str})
 
-# ---------------- Page ----------------
+# ---------------- Pages ----------------
 PLOTLY_JS = f"https://cdn.plot.ly/plotly-{plotly.offline.get_plotlyjs_version()}.min.js"
-
-page = f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Northwind Sales Insights</title>
-<script src="{PLOTLY_JS}"></script>
-<style>
+TABS = [("index.html", "Overview"), ("discounts.html", "1 · Discounts"),
+        ("sales-reps.html", "2 · Sales reps"), ("bundles.html", "3 · Bundles")]
+CSS = f"""<style>
   :root {{ color-scheme: light; --page: #f9f9f7; --surface: {SURFACE}; --ink: {INK}; --ink2: {INK2};
           --muted: {MUTED}; --grid: {GRID}; --accent: {BLUE}; --border: rgba(11,11,11,0.10); }}
   * {{ box-sizing: border-box; }}
@@ -279,24 +273,151 @@ page = f"""<!doctype html>
   .caveat {{ color: var(--ink2); font-size: 0.9rem; }}
   footer {{ color: var(--muted); font-size: 0.85rem; margin-top: 40px; }}
   @media (max-width: 600px) {{ section.q {{ padding: 20px 16px; }} h1 {{ font-size: 1.7rem; }} }}
-</style>
+  .tabs {{ position: sticky; top: 0; z-index: 10; background: var(--page);
+           border-bottom: 1px solid var(--grid); }}
+  .tabs ul {{ max-width: 920px; margin: 0 auto; padding: 0 16px; list-style: none; display: flex;
+              gap: 4px; overflow-x: auto; }}
+  .tabs a {{ display: block; padding: 14px 14px 12px; color: var(--ink2); text-decoration: none;
+             white-space: nowrap; border-bottom: 3px solid transparent; font-size: 0.95rem; }}
+  .tabs a:hover {{ color: var(--ink); }}
+  .tabs a[aria-current="page"] {{ color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }}
+  .cards {{ display: grid; gap: 20px; margin-top: 32px; }}
+  .card {{ background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+           padding: 24px 28px; }}
+  .card h2 {{ font-size: 1.3rem; }}
+  .card .answer {{ font-size: 1.05rem; margin: 10px 0 4px; }}
+  .card .more {{ display: inline-block; margin-top: 8px; color: var(--accent); font-weight: 600;
+                 text-decoration: none; }}
+  .card .more:hover {{ text-decoration: underline; }}
+  .pager {{ display: flex; justify-content: space-between; gap: 16px; margin-top: 24px; }}
+  .pager a {{ color: var(--accent); text-decoration: none; font-weight: 600; }}
+  .pager a:hover {{ text-decoration: underline; }}
+  @media (max-width: 600px) {{ .card {{ padding: 20px 16px; }} }}
+</style>"""
+FOOTER = f"""<footer>
+  All figures are produced by <code>analysis.py</code> and <code>build_site.py</code> from the Northwind
+  dataset; see the GitHub repository README to reproduce them. Revenue = unit price × quantity × (1 − discount).
+</footer>"""
+
+
+def render_page(filename, title, body):
+    """Write one page of the site with the shared head, tabs and footer.
+
+    Args:
+        filename (str): Output file name inside ``DOCS``; also marks
+            which tab is shown as current.
+        title (str): Page title shown in the browser tab.
+        body (str): HTML placed between the tab bar and the footer.
+
+    Returns:
+        None. Writes ``DOCS / filename``.
+    """
+    current = ' aria-current="page"'
+    tabs = "".join(
+        f'<li><a href="{f}"{current if f == filename else ""}>{label}</a></li>'
+        for f, label in TABS)
+    page = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{escape(title)}</title>
+<script src="{PLOTLY_JS}"></script>
+{CSS}
 </head>
 <body>
+<nav class="tabs" aria-label="Sections"><ul>{tabs}</ul></nav>
 <main>
+{body}
+{FOOTER}
+</main>
+</body>
+</html>
+"""
+    (DOCS / filename).write_text(page, encoding="utf-8")
+    print(f"Wrote {DOCS / filename}")
+
+
+def pager(prev, nxt):
+    """Build previous/next links shown at the bottom of a question page.
+
+    Args:
+        prev (tuple[str, str] | None): ``(file, label)`` of the page
+            before, or None for no link.
+        nxt (tuple[str, str] | None): ``(file, label)`` of the page
+            after, or None for no link.
+
+    Returns:
+        str: A ``pager`` div with up to two links.
+    """
+    left = f'<a href="{prev[0]}">← {prev[1]}</a>' if prev else "<span></span>"
+    right = f'<a href="{nxt[0]}">{nxt[1]} →</a>' if nxt else "<span></span>"
+    return f'<div class="pager">{left}{right}</div>'
+
+
+overview = f"""
 <header>
   <p class="meta">15.561 · HW 3 · Northwind Traders order data, July 1996 – May 1998</p>
   <h1>Discounts, sales reps, and product bundles at Northwind</h1>
   <p class="lede">Three questions a sales manager should be able to answer from Northwind's
   {len(A.orders)} orders and {len(A.details):,} order lines: whether discounts earn their cost,
-  where sales performance really differs, and which products customers buy together.</p>
-  <nav><ol>
-    <li><a href="#q1">Do discounted orders actually sell more product?</a></li>
-    <li><a href="#q2">How does performance vary among the sales representatives?</a></li>
-    <li><a href="#q3">Which products tend to be bought together?</a></li>
-  </ol></nav>
+  where sales performance really differs, and which products customers buy together. Each card
+  below gives the short answer; open a tab for the full analysis, charts and data.</p>
 </header>
 
-<section class="q" id="q1">
+<div class="cards">
+  <article class="card">
+    <div class="qnum">Question 1</div>
+    <h2>Do discounted orders actually sell more product?</h2>
+    <p class="answer"><b>Yes, but it doesn't pay off in revenue.</b> Compared with itself at full price,
+    the typical product sells {pp.qty_ratio.median() - 1:.0%} more units per order line when discounted,
+    yet net revenue per line shows no significant gain. Lift levels off above 15%, and the 10% tier
+    shows none.</p>
+    <div class="stats">
+      <div class="stat"><b>{pp.qty_ratio.median() - 1:+.0%}</b><span>median quantity lift when discounted</span></div>
+      <div class="stat"><b>{n_more} / {len(pp)}</b><span>products sell more units when discounted</span></div>
+      <div class="stat"><b>{money(r1['discount_cost'])}</b><span>given up to discounts ({pct(r1['discount_cost'] / r1['total_gross'])} of gross)</span></div>
+    </div>
+    <p><b>Implication:</b> use discounts to move units, not to grow revenue; cap routine discounts at 15%.</p>
+    <a class="more" href="discounts.html">See the discount analysis →</a>
+  </article>
+
+  <article class="card">
+    <div class="qnum">Question 2</div>
+    <h2>How does performance vary among the sales representatives?</h2>
+    <p class="answer"><b>Top reps win on volume, not deal size.</b> {top3.Rep.iloc[0]} leads with
+    {money(top3.net_revenue.iloc[0])}. Revenue gaps come from how many orders and customers each rep
+    handles; average order values don't differ meaningfully. Most reps grew sharply by 1998, but two
+    stayed flat.</p>
+    <div class="stats">
+      <div class="stat"><b>{top3.revenue_share.sum():.0%}</b><span>of revenue from the top three reps</span></div>
+      <div class="stat"><b>{uk.revenue_share.sum():.0%}</b><span>of revenue from the four-person UK office</span></div>
+      <div class="stat"><b>p = {r2['kruskal_p']:.2f}</b><span>no real difference in order value between reps</span></div>
+    </div>
+    <p><b>Implication:</b> coach for customer coverage and order frequency rather than upselling.</p>
+    <a class="more" href="sales-reps.html">See the sales rep analysis →</a>
+  </article>
+
+  <article class="card">
+    <div class="qnum">Question 3</div>
+    <h2>Which products tend to be bundled or bought together?</h2>
+    <p class="answer"><b>One reliable pair: scones and maple syrup.</b> Sir Rodney's Scones and Sirop
+    d'érable appear together {top.lift:.1f}× more often than chance, the only pair that holds up
+    statistically. Orders are small and focused, and categories mix slightly less than chance.</p>
+    <div class="stats">
+      <div class="stat"><b>{top.lift:.1f}×</b><span>scones + maple syrup vs. chance</span></div>
+      <div class="stat"><b>{int(r3['pairs'].significant_bonf.sum())}</b><span>pair significant after correction</span></div>
+      <div class="stat"><b>{r3['basket_size']['50%']:.0f}</b><span>products in the median order</span></div>
+    </div>
+    <p><b>Implication:</b> launch a scones-and-syrup bundle; test the weaker cheese/dessert pairs first.</p>
+    <a class="more" href="bundles.html">See the bundling analysis →</a>
+  </article>
+</div>
+"""
+
+render_page("index.html", "Northwind Sales Insights", overview)
+render_page("discounts.html", "Discounts · Northwind Sales Insights",
+            f"""<section class="q" id="q1">
   <div class="qnum">Question 1</div>
   <h2>Do discounted orders actually sell more product?</h2>
   <h3>Why it matters</h3>
@@ -340,9 +461,9 @@ page = f"""<!doctype html>
   <p class="caveat">Caveat: this is association, not causation — reps may grant discounts <em>because</em>
   a customer is already placing a large order. Some products have only one or two lines on one side,
   so individual dots are noisy; the conclusion rests on the paired test across all products.</p>
-</section>
-
-<section class="q" id="q2">
+</section>""" + pager(None, TABS[2]))
+render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
+            f"""<section class="q" id="q2">
   <div class="qnum">Question 2</div>
   <h2>How does performance vary among the sales representatives?</h2>
   <h3>Why it matters</h3>
@@ -384,9 +505,9 @@ page = f"""<!doctype html>
   growth, King's discounting, and Dodsworth's late shipments.</p>
   <p class="caveat">Caveat: Andrew Fuller (VP) and Steven Buchanan (manager) also carry management duties, and
   customer assignments are not random, so raw totals are not a pure measure of individual skill.</p>
-</section>
-
-<section class="q" id="q3">
+</section>""" + pager(TABS[1], TABS[3]))
+render_page("bundles.html", "Bundles · Northwind Sales Insights",
+            f"""<section class="q" id="q3">
   <div class="qnum">Question 3</div>
   <h2>Which products tend to be bundled or bought together?</h2>
   <h3>Why it matters</h3>
@@ -425,15 +546,4 @@ page = f"""<!doctype html>
   orders are small and focused, broad cross-category bundling is unlikely to pay off.</p>
   <p class="caveat">Caveat: with 77 products and a median of 2 items per order, most pairs are rare, so lift
   estimates for low-count pairs are unstable.</p>
-</section>
-
-<footer>
-  All figures are produced by <code>analysis.py</code> and <code>build_site.py</code> from the Northwind
-  dataset; see the GitHub repository README to reproduce them. Revenue = unit price × quantity × (1 − discount).
-</footer>
-</main>
-</body>
-</html>
-"""
-(DOCS / "index.html").write_text(page, encoding="utf-8")
-print(f"Wrote {DOCS / 'index.html'}")
+</section>""" + pager(TABS[2], None))

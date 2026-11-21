@@ -14,9 +14,10 @@ Analysis of the Northwind Traders order data (July 1996 – May 1998) answering 
 |---|---|
 | `data/Northwind Database.xlsx` | The provided Northwind dataset (input) |
 | `analysis.py` | All calculations for the three questions; prints results and writes CSV tables to `outputs/` |
-| `build_site.py` | Runs the analysis and builds the webpage with interactive Plotly charts into `docs/index.html` |
+| `build_site.py` | Runs the analysis and builds the four-page website with interactive Plotly charts into `docs/` |
 | `outputs/` | CSV tables behind every number and chart |
-| `docs/index.html` | The published webpage (served by GitHub Pages) |
+| `docs/index.html` | Overview page: short answer, key numbers and implication for each question |
+| `docs/discounts.html`, `docs/sales-reps.html`, `docs/bundles.html` | One page per question with the full approach, charts, tables and findings |
 | `requirements.txt` | Python dependencies |
 
 ## How to reproduce
@@ -26,12 +27,12 @@ Requires Python 3.9+.
 ```bash
 pip install -r requirements.txt
 python analysis.py        # prints all results and writes outputs/*.csv
-python build_site.py      # rebuilds docs/index.html
+python build_site.py      # rebuilds every page in docs/
 ```
 
 Both scripts read `data/Northwind Database.xlsx` by default; pass a different path as the first argument to use another copy, e.g. `python analysis.py path/to/Northwind.xlsx`.
 
-Every number, chart and table on the webpage is computed by `build_site.py` from the dataset at build time, so rerunning it reproduces the page exactly. Open `docs/index.html` in a browser to view it locally (the charts load Plotly from its CDN, so an internet connection is needed).
+Every number, chart and table on the webpage is computed by `build_site.py` from the dataset at build time, so rerunning it reproduces the page exactly. Open `docs/index.html` in a browser to view it locally; the tab bar links the pages (the charts load Plotly from its CDN, so an internet connection is needed).
 
 ## Definitions
 
