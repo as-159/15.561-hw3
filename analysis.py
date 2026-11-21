@@ -1,6 +1,7 @@
-"""Northwind analysis: discounts, sales-rep performance, and product bundling.
+"""Analyze Northwind discounts, sales reps and product bundling.
 
-Usage: python analysis.py ["data/Northwind Database.xlsx"] [output_dir]
+Usage: python analysis.py [xlsx_path] [output_dir]
+Defaults: data/Northwind Database.xlsx and outputs/.
 """
 import sys
 from itertools import combinations
@@ -29,6 +30,34 @@ details = details.merge(products, on="ProductID").merge(categories, on="Category
 
 # ---------- Q1: Do discounted orders sell more product? ----------
 def q1_discounts():
+    """Compare each product's discounted and full-price order lines.
+
+    Only products sold both with and without a discount are kept, so
+    every comparison pairs a product with itself. Also writes
+    ``q1_per_product.csv`` and ``q1_by_level.csv`` to ``OUT``.
+
+    Args:
+        None.
+
+    Returns:
+        dict: Results keyed as follows.
+            per_product (pandas.DataFrame): Lines, mean quantity and
+                mean net revenue per line for full-price and discounted
+                sales, plus their differences, one row per product.
+            by_level (pandas.DataFrame): Paired comparison against
+                full price for each discount level (5%-25%).
+            n_products (int): Products compared.
+            excluded (numpy.ndarray): Names of products dropped for
+                lacking discounted or full-price sales.
+            n_lines (int): Order lines in the compared products.
+            n_disc_lines (int): Discounted lines among ``n_lines``.
+            qty_t_p (float): Paired t-test p-value, quantity.
+            qty_w_p (float): Wilcoxon signed-rank p-value, quantity.
+            rev_t_p (float): Paired t-test p-value, net revenue.
+            rev_w_p (float): Wilcoxon signed-rank p-value, net revenue.
+            discount_cost (float): Gross minus net revenue, in dollars.
+            total_gross (float): Gross revenue before discounts.
+    """
     # One-to-one comparison: keep only products sold both with and without a discount,
     # then compare each product's discounted lines against its own full-price lines.
     both = details.groupby("ProductID").Discounted.nunique().eq(2)
@@ -85,6 +114,27 @@ def q1_discounts():
 
 # ---------- Q2: How does performance vary among sales reps? ----------
 def q2_reps():
+    """Summarize sales performance for each employee who took orders.
+
+    Adds a ``Rep`` full-name column to the module-level ``employees``
+    table and writes ``q2_reps.csv`` and ``q2_monthly_run_rate.csv``
+    to ``OUT``.
+
+    Args:
+        None.
+
+    Returns:
+        dict: Results keyed as follows.
+            reps (pandas.DataFrame): Orders, customers, net revenue,
+                average order value, late-shipment rate, discount
+                given, revenue share and revenue per customer per rep,
+                sorted by net revenue.
+            run_rate (pandas.DataFrame): Net revenue per month for
+                each year, rows in the same order as ``reps``.
+            kruskal_p (float): Kruskal-Wallis p-value for differences
+                in order value between reps.
+            months (pandas.Series): Months with orders in each year.
+    """
     o = orders.merge(details.groupby("OrderID").agg(net=("NetRevenue", "sum"),
                                                     gross=("GrossRevenue", "sum")),
                      on="OrderID")
@@ -120,6 +170,27 @@ def q2_reps():
 
 # ---------- Q3: Which products are bought together? ----------
 def q3_bundles(min_orders=5):
+    """Find product pairs and categories bought in the same order.
+
+    Writes ``q3_pairs.csv`` and ``q3_category_lift.csv`` to ``OUT``.
+
+    Args:
+        min_orders (int): Fewest shared orders for a pair to be scored.
+
+    Returns:
+        dict: Results keyed as follows.
+            pairs (pandas.DataFrame): Pairs with at least
+                ``min_orders`` shared orders, with support, confidence
+                each way, lift, one-sided Fisher p-value and a
+                Bonferroni significance flag, sorted by lift.
+            n_orders (int): Orders analyzed.
+            multi_share (float): Share of orders with 2+ products.
+            basket_size (pandas.Series): Summary statistics of
+                distinct products per order.
+            cat_lift (pandas.DataFrame): Symmetric category-by-category
+                lift; the diagonal is NaN.
+            n_pairs_total (int): Distinct pairs seen at least once.
+    """
     baskets = details.groupby("OrderID").ProductName.apply(lambda s: sorted(set(s)))
     n = len(baskets)
     item_cnt = details.groupby("ProductName").OrderID.nunique()

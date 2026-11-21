@@ -1,6 +1,6 @@
-"""Build the findings webpage (docs/index.html) with interactive Plotly charts.
+"""Build the findings webpage, docs/index.html, with Plotly charts.
 
-Usage: python build_site.py ["data/Northwind Database.xlsx"]
+Usage: python build_site.py [xlsx_path]
 Every number on the page is computed by analysis.py at build time.
 """
 from html import escape
@@ -25,7 +25,18 @@ FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 
 
 def style(fig, height=420, **layout):
-    """Apply shared chart chrome: recessive grid, muted axes, no mode bar clutter."""
+    """Apply the page's shared chart styling to a figure.
+
+    Args:
+        fig (plotly.graph_objects.Figure): Figure to style; modified in
+            place.
+        height (int): Chart height in pixels.
+        **layout: Extra Plotly layout settings; override the defaults,
+            including ``bargap``.
+
+    Returns:
+        plotly.graph_objects.Figure: The same ``fig``, for chaining.
+    """
     fig.update_layout(
         height=height, font=dict(family=FONT, size=13, color=INK2),
         paper_bgcolor=SURFACE, plot_bgcolor=SURFACE, margin=dict(l=10, r=20, t=10, b=10),
@@ -40,13 +51,32 @@ def style(fig, height=420, **layout):
 
 
 def html(fig):
+    """Render a figure as an embeddable HTML fragment.
+
+    Args:
+        fig (plotly.graph_objects.Figure): Figure to render.
+
+    Returns:
+        str: ``<div>`` and script markup; Plotly.js itself is not
+        included and must be loaded by the page.
+    """
     return fig.to_html(full_html=False, include_plotlyjs=False,
                        config=dict(displaylogo=False, responsive=True,
                                    modeBarButtonsToRemove=["select2d", "lasso2d"]))
 
 
 def table(df, fmt):
-    """Render a DataFrame as an HTML table; fmt maps column -> format function."""
+    """Render a DataFrame as an HTML-escaped table.
+
+    Args:
+        df (pandas.DataFrame): Rows and columns to show; the index is
+            ignored.
+        fmt (dict[str, Callable[[Any], str]]): Formatter per column
+            name; columns not listed use ``str``.
+
+    Returns:
+        str: Table markup wrapped in a scrollable ``table-wrap`` div.
+    """
     head = "".join(f"<th>{escape(str(c))}</th>" for c in df.columns)
     rows = "".join("<tr>" + "".join(
         f"<td>{escape(fmt.get(c, str)(v))}</td>" for c, v in r.items()) + "</tr>"
