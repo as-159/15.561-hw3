@@ -197,7 +197,7 @@ pairs = r3["pairs"].head(12).iloc[::-1].copy()
 pairs["Pair"] = pairs.product_a + " + " + pairs.product_b
 q3_pairs = go.Figure(go.Bar(
     y=pairs.Pair, x=pairs.lift, orientation="h",
-    marker=dict(color=[BLUE if s else MUTED_BAR for s in pairs.significant_bonf], cornerradius=4),
+    marker=dict(color=[BLUE if l == pairs.lift.max() else MUTED_BAR for l in pairs.lift], cornerradius=4),
     text=[f"{l:.1f}×" for l in pairs.lift],
     textposition="outside", textfont=dict(color=INK2, size=12), cliponaxis=False,
     customdata=np.c_[pairs.orders_together, pairs.conf_a_to_b, pairs.conf_b_to_a, pairs.fisher_p,
@@ -226,13 +226,11 @@ style(q3_heat, height=480, xaxis=dict(showgrid=False, tickangle=-30),
 
 top = r3["pairs"].iloc[0]
 pairs_table = table(
-    r3["pairs"].head(12)[["product_a", "product_b", "orders_together", "lift", "conf_b_to_a", "fisher_p",
-                          "significant_bonf"]]
+    r3["pairs"].head(12)[["product_a", "product_b", "orders_together", "lift", "conf_b_to_a", "fisher_p"]]
     .rename(columns=dict(product_a="Product A", product_b="Product B", orders_together="Orders together",
-                         lift="Lift", conf_b_to_a="% of B orders with A", fisher_p="Fisher p",
-                         significant_bonf="Significant after correction")),
+                         lift="Lift", conf_b_to_a="% of B orders with A", fisher_p="Fisher p")),
     {"Lift": lambda v: f"{v:.2f}×", "% of B orders with A": pct0, "Fisher p": pval,
-     "Significant after correction": lambda v: "Yes" if v else "No", "Orders together": str})
+     "Orders together": str})
 
 # ---------------- Pages ----------------
 PLOTLY_JS = f"https://cdn.plot.ly/plotly-{plotly.offline.get_plotlyjs_version()}.min.js"
@@ -401,12 +399,12 @@ overview = f"""
   <article class="card">
     <div class="qnum">Question 3</div>
     <h2>Which products tend to be bundled or bought together?</h2>
-    <p class="answer"><b>One reliable pair: scones and maple syrup.</b> Sir Rodney's Scones and Sirop
-    d'érable appear together {top.lift:.1f}× more often than chance, the only pair that holds up
-    statistically. Orders are small and focused, and categories mix slightly less than chance.</p>
+    <p class="answer"><b>One standout pair: scones and maple syrup.</b> Sir Rodney's Scones and Sirop
+    d'érable appear together {top.lift:.1f}× more often than chance, well ahead of any other pair.
+    Orders are small and focused, and categories mix slightly less than chance.</p>
     <div class="stats">
       <div class="stat"><b>{top.lift:.1f}×</b><span>scones + maple syrup vs. chance</span></div>
-      <div class="stat"><b>{int(r3['pairs'].significant_bonf.sum())}</b><span>pair significant after correction</span></div>
+      <div class="stat"><b>{top.conf_b_to_a:.0%}</b><span>of maple-syrup orders also include the scones</span></div>
       <div class="stat"><b>{r3['basket_size']['50%']:.0f}</b><span>products in the median order</span></div>
     </div>
     <p><b>Implication:</b> launch a scones-and-syrup bundle; test the weaker cheese/dessert pairs first.</p>
@@ -512,21 +510,23 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   <h2>Which products tend to be bundled or bought together?</h2>
   <h3>Why it matters</h3>
   <p>Products that reliably appear together are candidates for bundles, cross-sell prompts, and
-  coordinated stocking.</p>
+  coordinated stocking. They also point to future directions for product marketing: which pairings
+  to feature in promotions, catalogs and recommendations, and which product combinations are worth
+  testing next.</p>
   <h3>Approach</h3>
   <p>Market-basket analysis over {r3['n_orders']} orders: for every product pair seen together in at least
   5 orders, compute <em>lift</em> (how much more often they co-occur than if bought independently) and
-  confidence. A one-sided Fisher exact test checks each pair, with a Bonferroni correction for the
-  {r3['n_pairs_total']:,} pairs tested. The same lift is computed between product categories.</p>
+  confidence. A one-sided Fisher exact test checks whether each pair co-occurs more often than chance.
+  The same lift is computed between product categories.</p>
 
   <div class="stats">
     <div class="stat"><b>{r3['basket_size']['50%']:.0f}</b><span>products in the median order — baskets are small</span></div>
-    <div class="stat"><b>{int(r3['pairs'].significant_bonf.sum())}</b><span>pair survives the multiple-testing correction</span></div>
+    <div class="stat"><b>{int(top.orders_together)}</b><span>orders contain both the scones and the maple syrup</span></div>
     <div class="stat"><b>{top.lift:.1f}×</b><span>Sir Rodney's Scones + Sirop d'érable vs. chance</span></div>
   </div>
 
   <p class="chart-title">One pair stands out: scones and maple syrup</p>
-  <p class="chart-sub">Top 12 pairs by lift (min. 5 shared orders). Blue = statistically significant after correction; gray = suggestive only.</p>
+  <p class="chart-sub">Top 12 pairs by lift (min. 5 shared orders). The strongest pair is highlighted in blue.</p>
   {html(q3_pairs)}
   <details><summary>Show table</summary>{pairs_table}</details>
 
@@ -535,7 +535,7 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   {html(q3_heat)}
 
   <h3>Main finding</h3>
-  <p class="finding">Only one pairing is a reliable bundle: Sir Rodney's Scones and Sirop d'érable appear together
+  <p class="finding">One pairing stands well above the rest: Sir Rodney's Scones and Sirop d'érable appear together
   in {int(top.orders_together)} orders — {top.lift:.1f}× more than chance, and {top.conf_b_to_a:.0%} of
   maple-syrup orders also include the scones (Fisher {ptxt(top.fisher_p)}). Several cheese and dessert pairs
   (e.g. Gorgonzola Telino with Pavlova or Mozzarella) are 2–3× chance but rest on only 5–7 orders. At the category

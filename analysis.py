@@ -181,8 +181,8 @@ def q3_bundles(min_orders=5):
         dict: Results keyed as follows.
             pairs (pandas.DataFrame): Pairs with at least
                 ``min_orders`` shared orders, with support, confidence
-                each way, lift, one-sided Fisher p-value and a
-                Bonferroni significance flag, sorted by lift.
+                each way, lift and one-sided Fisher p-value, sorted
+                by lift.
             n_orders (int): Orders analyzed.
             multi_share (float): Share of orders with 2+ products.
             basket_size (pandas.Series): Summary statistics of
@@ -211,8 +211,6 @@ def q3_bundles(min_orders=5):
                          conf_a_to_b=c / item_cnt[a], conf_b_to_a=c / item_cnt[b],
                          lift=(c / n) / (sa * sb), fisher_p=p))
     pairs = pd.DataFrame(rows).sort_values(["lift", "orders_together"], ascending=False)
-    # Bonferroni across every pair that appeared at least once.
-    pairs["significant_bonf"] = pairs.fisher_p < 0.05 / len(pair_cnt)
 
     multi = (baskets.str.len() > 1).mean()
     basket_size = baskets.str.len().describe()
