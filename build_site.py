@@ -436,8 +436,7 @@ render_page("discounts.html", "Discounts · Northwind Sales Insights",
   <p>Discounts cost Northwind {money(r1['discount_cost'])} — {pct(r1['discount_cost'] / r1['total_gross'])}
   of gross sales. If discounts don't move more product, that is margin given away for nothing.</p>
   <h3>Approach</h3>
-  <p>A simple discounted-vs-not comparison is misleading if popular products are discounted more often.
-  So each product is compared <em>only with itself</em>: its average units per order line when
+  <p>Each product is compared with itself: its average units per order line when
   discounted versus when sold at full price. All {r1['n_products']} products were sold both ways,
   giving {r1['n_products']} paired comparisons ({r1['n_disc_lines']} discounted lines out of
   {r1['n_lines']:,}). Differences are tested with a paired t-test and a Wilcoxon signed-rank test,
