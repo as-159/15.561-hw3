@@ -407,7 +407,7 @@ overview = f"""
     <div class="stats">
       <div class="stat"><b>{top3.revenue_share.sum():.0%}</b><span>of revenue from the top three reps</span></div>
       <div class="stat"><b>{uk.revenue_share.sum():.0%}</b><span>of revenue from the four-person UK office</span></div>
-      <div class="stat"><b>{len(aov_sig)} / {len(reps)}</b><span>reps whose order value differs significantly from the rest (both lower)</span></div>
+      <div class="stat"><b>{len(aov_sig)} / {len(reps)}</b><span>reps whose order values are significantly lower than the rest</span></div>
     </div>
     <p><b>Implication:</b> coach for customer coverage and order frequency rather than upselling.</p>
     <a class="more" href="sales-reps.html">See the sales rep analysis →</a>
