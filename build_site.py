@@ -119,11 +119,13 @@ q1_levels = go.Figure(go.Bar(
     x=lvl.discount, y=lvl.median_qty_lift, marker=dict(color=BLUE, cornerradius=4),
     text=[f"{v:+.0%}" for v in lvl.median_qty_lift], textposition="outside",
     textfont=dict(color=INK2), cliponaxis=False,
-    customdata=np.c_[lvl.products, lvl.share_products_higher, lvl.mean_rev_diff, lvl.wilcoxon_p],
+    customdata=np.c_[lvl.products, lvl.share_products_higher, lvl.qty_wilcoxon_p,
+                     lvl.mean_rev_diff, lvl.rev_wilcoxon_p],
     hovertemplate="<b>%{x} discount</b><br>Median quantity lift: %{y:+.1%}"
                   "<br>Products compared: %{customdata[0]}<br>Share selling more: %{customdata[1]:.0%}"
-                  "<br>Avg revenue change/line: $%{customdata[2]:+.0f}"
-                  "<br>Wilcoxon p = %{customdata[3]:.3f}<extra></extra>"))
+                  "<br>Quantity p (Wilcoxon) = %{customdata[2]:.3f}"
+                  "<br>Avg net revenue change/line: $%{customdata[3]:+.0f}"
+                  "<br>Net revenue p (Wilcoxon) = %{customdata[4]:.3f}<extra></extra>"))
 style(q1_levels, height=340,
       xaxis=dict(title="Discount level"),
       yaxis=dict(title="Median quantity lift", tickformat="+.0%",
@@ -132,12 +134,15 @@ style(q1_levels, height=340,
 q1_level_table = table(
     lvl.rename(columns=dict(discount="Discount", products="Products", lines="Discounted lines",
                             median_qty_lift="Median qty lift", share_products_higher="Products selling more",
-                            mean_rev_diff="Avg revenue change / line", wilcoxon_p="p (Wilcoxon)"))
+                            qty_wilcoxon_p="p, quantity (Wilcoxon)",
+                            mean_rev_diff="Avg net revenue change / line",
+                            rev_wilcoxon_p="p, net revenue (Wilcoxon)"))
     [["Discount", "Products", "Discounted lines", "Median qty lift", "Products selling more",
-      "Avg revenue change / line", "p (Wilcoxon)"]],
+      "p, quantity (Wilcoxon)", "Avg net revenue change / line", "p, net revenue (Wilcoxon)"]],
     {"Median qty lift": lambda v: f"{v:+.1%}", "Products selling more": pct0,
-     "Avg revenue change / line": lambda v: f"{'+' if v >= 0 else '−'}${abs(v):,.0f}",
-     "p (Wilcoxon)": pval})
+     "p, quantity (Wilcoxon)": pval,
+     "Avg net revenue change / line": lambda v: f"{'+' if v >= 0 else '−'}${abs(v):,.0f}",
+     "p, net revenue (Wilcoxon)": pval})
 
 n_more = int((pp.qty_diff > 0).sum())
 n_rev_more = int((pp.rev_diff > 0).sum())

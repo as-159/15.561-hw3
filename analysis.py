@@ -45,7 +45,8 @@ def q1_discounts():
                 mean net revenue per line for full-price and discounted
                 sales, plus their differences, one row per product.
             by_level (pandas.DataFrame): Paired comparison against
-                full price for each discount level (5%-25%).
+                full price for each discount level (5%-25%), with
+                Wilcoxon p-values for quantity and net revenue.
             n_products (int): Products compared.
             excluded (numpy.ndarray): Names of products dropped for
                 lacking discounted or full-price sales.
@@ -96,7 +97,8 @@ def q1_discounts():
             median_qty_lift=(lvl.q / full[lvl.index] - 1).median(),
             share_products_higher=(lvl.q > full[lvl.index]).mean(),
             mean_rev_diff=(lvl.r - full_rev[lvl.index]).mean(),
-            wilcoxon_p=stats.wilcoxon(lvl.q, full[lvl.index]).pvalue,
+            qty_wilcoxon_p=stats.wilcoxon(lvl.q, full[lvl.index]).pvalue,
+            rev_wilcoxon_p=stats.wilcoxon(lvl.r, full_rev[lvl.index]).pvalue,
         ))
     by_level = pd.DataFrame(level_rows).set_index("discount")
 
