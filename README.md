@@ -1,6 +1,6 @@
 # Northwind Sales Insights (15.561 HW 3)
 
-Analysis of the Northwind Traders order data (July 1996 – May 1998) answering three business questions:
+Analysis of the Northwind Traders order data (July 1996 - May 1998) answering three business questions:
 
 1. **Do discounted orders actually sell more product?** Each product's discounted order lines are compared one-to-one with its own full-price lines (all 77 products were sold both ways), using paired t-tests and Wilcoxon signed-rank tests, overall and by discount level.
 2. **How does performance vary among the sales representatives?** Net revenue, orders, customers, average order value, discount rate and late-shipment rate per employee, a Welch t-test comparing each rep's average order value with the rest of the team's, plus monthly revenue run-rate by year.

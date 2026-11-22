@@ -168,7 +168,7 @@ for country, color in (("USA", BLUE), ("UK", ORANGE)):
                       "<br>Other reps' avg order: $%{customdata[3]:,.0f} (t-test p = %{customdata[4]:.3f})"
                       "<br>Net revenue: $%{customdata[1]:,.0f}<br>Customers: %{customdata[2]}<extra></extra>"))
 style(q2_scatter, height=460,
-      xaxis=dict(title="Number of orders (Jul 1996 – May 1998)", range=[0, 195]),
+      xaxis=dict(title="Number of orders (Jul 1996 - May 1998)", range=[0, 195]),
       yaxis=dict(title="Average net value per order ($)", tickprefix="$", range=[900, 2000]))
 
 rr = r2["run_rate"].reindex(reps.Rep)
@@ -372,7 +372,7 @@ def pager(prev, nxt):
 
 overview = f"""
 <header>
-  <p class="meta">15.561 · HW 3 · Northwind Traders order data, July 1996 – May 1998</p>
+  <p class="meta">Ashley Song · 15.561 · HW 3 · Northwind Traders order data, July 1996 - May 1998</p>
   <h1>Discounts, sales reps, and product bundles at Northwind</h1>
   <p class="lede">Three questions a sales manager should be able to answer from Northwind's
   {len(A.orders)} orders and {len(A.details):,} order lines: whether discounts earn their cost,
