@@ -186,18 +186,17 @@ style(q2_growth, height=560, barmode="group", bargap=0.25, bargroupgap=0.08,
 q2_growth.update_layout(legend_traceorder="reversed")
 
 q2_table = table(
-    reps[["Rep", "Title", "Country", "orders", "customers", "net_revenue", "revenue_share",
-          "avg_order_value", "aov_others", "aov_t_p", "avg_units", "units_others", "units_t_p",
-          "discount_given_pct", "late_rate"]]
-    .rename(columns=dict(orders="Orders", customers="Customers", net_revenue="Net revenue",
+    reps[["Rep", "Title", "Country", "orders", "orders_others", "customers", "net_revenue",
+          "revenue_share", "avg_order_value", "aov_others", "aov_t_p", "discount_given_pct",
+          "late_rate"]]
+    .rename(columns=dict(orders="Total orders", orders_others="Other reps' avg total orders",
+                         customers="Customers", net_revenue="Net revenue",
                          revenue_share="Share", avg_order_value="Avg order",
                          aov_others="Other reps' avg order", aov_t_p="p, order value (t-test)",
-                         avg_units="Avg units / order", units_others="Other reps' avg units",
-                         units_t_p="p, order quantity (t-test)",
                          discount_given_pct="Discount given", late_rate="Late shipments")),
     {"Net revenue": money, "Share": pct, "Avg order": money, "Other reps' avg order": money,
-     "p, order value (t-test)": pval, "Avg units / order": lambda v: f"{v:.1f}",
-     "Other reps' avg units": lambda v: f"{v:.1f}", "p, order quantity (t-test)": pval, "Discount given": pct, "Late shipments": pct, "Orders": str,
+     "p, order value (t-test)": pval, "Discount given": pct, "Late shipments": pct,
+     "Total orders": str, "Other reps' avg total orders": lambda v: f"{v:.1f}",
      "Customers": str})
 
 top3 = reps.head(3)

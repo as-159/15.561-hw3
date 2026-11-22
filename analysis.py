@@ -130,16 +130,15 @@ def q2_reps():
             reps (pandas.DataFrame): Orders, customers, net revenue,
                 average order value, late-shipment rate, discount
                 given, revenue share and revenue per customer per rep,
-                and average units per order, each with the same average
-                over all other reps' orders and a Welch t-test p-value
-                comparing the two, sorted by net revenue.
+                the average order value of all other reps' orders with
+                a Welch t-test p-value, and the average total orders of
+                the other reps, sorted by net revenue.
             run_rate (pandas.DataFrame): Net revenue per month for
                 each year, rows in the same order as ``reps``.
             months (pandas.Series): Months with orders in each year.
     """
     o = orders.merge(details.groupby("OrderID").agg(net=("NetRevenue", "sum"),
-                                                    gross=("GrossRevenue", "sum"),
-                                                    units=("Quantity", "sum")),
+                                                    gross=("GrossRevenue", "sum")),
                      on="OrderID")
     o["Late"] = o.ShippedDate > o.RequiredDate
     o["Year"] = o.OrderDate.dt.year
@@ -156,20 +155,17 @@ def q2_reps():
     reps["rev_per_customer"] = reps.net_revenue / reps.customers
     reps = reps.drop(columns="gross").sort_values("net_revenue", ascending=False)
 
-    # Do each rep's orders differ from everyone else's in value ($) or in
-    # units? Welch t-tests (unequal variances) of the rep's orders against
-    # all other reps' orders.
-    for col, prefix in (("net", "aov"), ("units", "units")):
-        rest_mean, t_p = [], []
-        for rep in reps.Rep:
-            mine = o.loc[o.Rep == rep, col]
-            rest = o.loc[o.Rep != rep, col]
-            rest_mean.append(rest.mean())
-            t_p.append(stats.ttest_ind(mine, rest, equal_var=False).pvalue)
-        if prefix == "units":
-            reps["avg_units"] = reps.Rep.map(o.groupby("Rep").units.mean())
-        reps[f"{prefix}_others"] = rest_mean
-        reps[f"{prefix}_t_p"] = t_p
+    # Does each rep's order value differ from everyone else's? Welch t-test
+    # (unequal variances) of the rep's orders against all other reps' orders.
+    aov_others, aov_p = [], []
+    for rep in reps.Rep:
+        mine, rest = o.loc[o.Rep == rep, "net"], o.loc[o.Rep != rep, "net"]
+        aov_others.append(rest.mean())
+        aov_p.append(stats.ttest_ind(mine, rest, equal_var=False).pvalue)
+    reps["aov_others"] = aov_others
+    reps["aov_t_p"] = aov_p
+    # Average total orders handled by the other reps, for comparison.
+    reps["orders_others"] = (reps.orders.sum() - reps.orders) / (len(reps) - 1)
 
     # 1996 covers Jul-Dec and 1998 covers Jan-May, so compare monthly run-rates.
     months = o.groupby("Year").OrderDate.apply(lambda s: s.dt.to_period("M").nunique())
