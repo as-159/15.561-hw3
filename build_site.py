@@ -535,8 +535,11 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   <h3>Approach</h3>
   <p>Market-basket analysis over {r3['n_orders']} orders: for every product pair seen together in at least
   5 orders, compute <em>lift</em> (how much more often they co-occur than if bought independently) and
-  confidence. A chi-square test checks whether each pair appears together more often than it would by
-  chance if customers chose the two products independently.
+  confidence. "Chance" is the number of orders expected to contain both products if customers chose
+  them independently: the share of orders with product A × the share with product B × the total number
+  of orders. Lift is the actual number of shared orders divided by that expected number, so 1.0× means
+  exactly as often as chance. A chi-square test checks whether each pair appears together more often
+  than chance.
   The same lift is computed between product categories.</p>
 
   <div class="stats">
