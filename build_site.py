@@ -163,7 +163,7 @@ for country, color in (("USA", BLUE), ("UK", ORANGE)):
         text=d.Rep, textposition=[LABEL_POS.get(r, "top center") for r in d.Rep],
         textfont=dict(color=INK2, size=12),
         marker=dict(size=d.net_revenue / 9000, color=color, line=dict(color=SURFACE, width=2)),
-        customdata=np.c_[d.Title, d.net_revenue, d.customers, d.avg_order_value_others, d.aov_t_p],
+        customdata=np.c_[d.Title, d.net_revenue, d.customers, d.aov_others, d.aov_t_p],
         hovertemplate="<b>%{text}</b> · %{customdata[0]}<br>Orders: %{x}<br>Avg order value: $%{y:,.0f}"
                       "<br>Other reps' avg order: $%{customdata[3]:,.0f} (t-test p = %{customdata[4]:.3f})"
                       "<br>Net revenue: $%{customdata[1]:,.0f}<br>Customers: %{customdata[2]}<extra></extra>"))
@@ -187,13 +187,17 @@ q2_growth.update_layout(legend_traceorder="reversed")
 
 q2_table = table(
     reps[["Rep", "Title", "Country", "orders", "customers", "net_revenue", "revenue_share",
-          "avg_order_value", "avg_order_value_others", "aov_t_p", "discount_given_pct", "late_rate"]]
+          "avg_order_value", "aov_others", "aov_t_p", "avg_units", "units_others", "units_t_p",
+          "discount_given_pct", "late_rate"]]
     .rename(columns=dict(orders="Orders", customers="Customers", net_revenue="Net revenue",
                          revenue_share="Share", avg_order_value="Avg order",
-                         avg_order_value_others="Other reps' avg order", aov_t_p="p (t-test)",
+                         aov_others="Other reps' avg order", aov_t_p="p, order value (t-test)",
+                         avg_units="Avg units / order", units_others="Other reps' avg units",
+                         units_t_p="p, order quantity (t-test)",
                          discount_given_pct="Discount given", late_rate="Late shipments")),
     {"Net revenue": money, "Share": pct, "Avg order": money, "Other reps' avg order": money,
-     "p (t-test)": pval, "Discount given": pct, "Late shipments": pct, "Orders": str,
+     "p, order value (t-test)": pval, "Avg units / order": lambda v: f"{v:.1f}",
+     "Other reps' avg units": lambda v: f"{v:.1f}", "p, order quantity (t-test)": pval, "Discount given": pct, "Late shipments": pct, "Orders": str,
      "Customers": str})
 
 top3 = reps.head(3)
@@ -202,7 +206,7 @@ uk = reps[reps.Country == "UK"]
 aov_sig = reps[reps.aov_t_p < 0.05].sort_values("avg_order_value")
 aov_sig_names = " and ".join(aov_sig.Rep)
 aov_sig_detail = "; ".join(
-    f"{r.Rep} {money(r.avg_order_value)} vs. {money(r.avg_order_value_others)}, {ptxt(r.aov_t_p)}"
+    f"{r.Rep} {money(r.avg_order_value)} vs. {money(r.aov_others)}, {ptxt(r.aov_t_p)}"
     for r in aov_sig.itertuples())
 
 # ---------------- Q3 ----------------
@@ -513,8 +517,7 @@ render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
   rate ({pct(reps.set_index('Rep').late_rate['Anne Dodsworth'])}).</p>
   <h3>Business implication</h3>
   <p class="implication">Focus coaching and territory planning on customer coverage and order frequency rather
-  than upselling. The UK office's lower totals partly reflect that two of its four people are managers —
-  review its capacity before judging individuals. Follow up specifically on Suyama's and Buchanan's flat
+  than upselling. Follow up specifically on Suyama's and Buchanan's flat
   growth, why Suyama's and Callahan's orders run smaller, King's discounting, and Dodsworth's late
   shipments.</p>
   <p class="caveat">Caveat: Andrew Fuller (VP) and Steven Buchanan (manager) also carry management duties, and
