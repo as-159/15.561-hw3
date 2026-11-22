@@ -466,7 +466,7 @@ render_page("discounts.html", "Discounts · Northwind Sales Insights",
   offsets the lower price: net revenue per line is {money(pp.mean_net_rev_disc.mean())} discounted vs.
   {money(pp.mean_net_rev_full.mean())} at full price, a difference that is not statistically significant
   ({ptxt(r1['rev_t_p'])}). The lift also plateaus: 15%, 20% and 25% discounts all produce a similar
-  13–18% increase, while the 10% tier shows no lift at all.</p>
+  13-18% increase, while the 10% tier shows no lift at all.</p>
   <h3>Business implication</h3>
   <p class="implication">Treat discounts as a tool for moving units (e.g. clearing stock), not for growing
   revenue. Since 20-25% discounts move no more volume than 15%, given the plateaued quantity uplift,
@@ -496,7 +496,7 @@ render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
   </div>
 
   <p class="chart-title">Top reps win on number of orders, not order size</p>
-  <p class="chart-sub">Bubble size = net revenue. Average order values cluster around $1,100–1,800 for everyone.</p>
+  <p class="chart-sub">Bubble size = net revenue. Average order values cluster around $1,100-1,800 for everyone.</p>
   {html(q2_scatter)}
 
   <p class="chart-title">Most reps grew sharply by 1998 — two did not</p>
@@ -558,7 +558,7 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   <p class="finding">One pairing stands well above the rest: Sir Rodney's Scones and Sirop d'érable appear together
   in {int(top.orders_together)} orders — {top.lift:.1f}× more than chance, and {top.conf_b_to_a:.0%} of
   maple-syrup orders also include the scones (chi-square {ptxt(top.chisq_p)}). Several cheese and dessert pairs
-  (e.g. Gorgonzola Telino with Pavlova or Mozzarella) are 2–3× chance but rest on only 5–7 orders. At the category
+  (e.g. Gorgonzola Telino with Pavlova or Mozzarella) are 2-3× chance but rest on only 5-7 orders. At the category
   level every pair sits below 1.0: customers place focused orders rather than mixed baskets.</p>
   <h3>Business implication</h3>
   <p class="implication">Launch a scones-and-syrup bundle or cross-sell prompt — the evidence supports it. Treat the
