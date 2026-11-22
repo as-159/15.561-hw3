@@ -163,8 +163,9 @@ for country, color in (("USA", BLUE), ("UK", ORANGE)):
         text=d.Rep, textposition=[LABEL_POS.get(r, "top center") for r in d.Rep],
         textfont=dict(color=INK2, size=12),
         marker=dict(size=d.net_revenue / 9000, color=color, line=dict(color=SURFACE, width=2)),
-        customdata=np.c_[d.Title, d.net_revenue, d.customers],
+        customdata=np.c_[d.Title, d.net_revenue, d.customers, d.avg_order_value_others, d.aov_t_p],
         hovertemplate="<b>%{text}</b> · %{customdata[0]}<br>Orders: %{x}<br>Avg order value: $%{y:,.0f}"
+                      "<br>Other reps' avg order: $%{customdata[3]:,.0f} (t-test p = %{customdata[4]:.3f})"
                       "<br>Net revenue: $%{customdata[1]:,.0f}<br>Customers: %{customdata[2]}<extra></extra>"))
 style(q2_scatter, height=460,
       xaxis=dict(title="Number of orders (Jul 1996 – May 1998)", range=[0, 195]),
@@ -186,15 +187,23 @@ q2_growth.update_layout(legend_traceorder="reversed")
 
 q2_table = table(
     reps[["Rep", "Title", "Country", "orders", "customers", "net_revenue", "revenue_share",
-          "avg_order_value", "discount_given_pct", "late_rate"]]
+          "avg_order_value", "avg_order_value_others", "aov_t_p", "discount_given_pct", "late_rate"]]
     .rename(columns=dict(orders="Orders", customers="Customers", net_revenue="Net revenue",
                          revenue_share="Share", avg_order_value="Avg order",
+                         avg_order_value_others="Other reps' avg order", aov_t_p="p (t-test)",
                          discount_given_pct="Discount given", late_rate="Late shipments")),
-    {"Net revenue": money, "Share": pct, "Avg order": money, "Discount given": pct,
-     "Late shipments": pct, "Orders": str, "Customers": str})
+    {"Net revenue": money, "Share": pct, "Avg order": money, "Other reps' avg order": money,
+     "p (t-test)": pval, "Discount given": pct, "Late shipments": pct, "Orders": str,
+     "Customers": str})
 
 top3 = reps.head(3)
 uk = reps[reps.Country == "UK"]
+# Reps whose average order value differs significantly from all other reps' orders.
+aov_sig = reps[reps.aov_t_p < 0.05].sort_values("avg_order_value")
+aov_sig_names = " and ".join(aov_sig.Rep)
+aov_sig_detail = "; ".join(
+    f"{r.Rep} {money(r.avg_order_value)} vs. {money(r.avg_order_value_others)}, {ptxt(r.aov_t_p)}"
+    for r in aov_sig.itertuples())
 
 # ---------------- Q3 ----------------
 r3 = A.q3_bundles()
@@ -205,12 +214,12 @@ q3_pairs = go.Figure(go.Bar(
     marker=dict(color=[BLUE if l == pairs.lift.max() else MUTED_BAR for l in pairs.lift], cornerradius=4),
     text=[f"{l:.1f}×" for l in pairs.lift],
     textposition="outside", textfont=dict(color=INK2, size=12), cliponaxis=False,
-    customdata=np.c_[pairs.orders_together, pairs.conf_a_to_b, pairs.conf_b_to_a, pairs.fisher_p,
+    customdata=np.c_[pairs.orders_together, pairs.conf_a_to_b, pairs.conf_b_to_a, pairs.chisq_p,
                      pairs.product_a, pairs.product_b],
     hovertemplate="<b>%{y}</b><br>Lift: %{x:.2f}× chance<br>Orders together: %{customdata[0]}"
                   "<br>%{customdata[1]:.0%} of %{customdata[4]} orders include %{customdata[5]}"
                   "<br>%{customdata[2]:.0%} of %{customdata[5]} orders include %{customdata[4]}"
-                  "<br>Fisher p = %{customdata[3]:.4f}<extra></extra>"))
+                  "<br>Chi-square p = %{customdata[3]:.4f}<extra></extra>"))
 q3_pairs.add_vline(x=1, line=dict(color=AXIS, width=2, dash="dash"))
 style(q3_pairs, height=520, xaxis=dict(title="Lift (× chance)",
                                         range=[0, pairs.lift.max() * 1.15]),
@@ -231,10 +240,10 @@ style(q3_heat, height=480, xaxis=dict(showgrid=False, tickangle=-30),
 
 top = r3["pairs"].iloc[0]
 pairs_table = table(
-    r3["pairs"].head(12)[["product_a", "product_b", "orders_together", "lift", "conf_b_to_a", "fisher_p"]]
+    r3["pairs"].head(12)[["product_a", "product_b", "orders_together", "lift", "conf_b_to_a", "chisq_p"]]
     .rename(columns=dict(product_a="Product A", product_b="Product B", orders_together="Orders together",
-                         lift="Lift", conf_b_to_a="% of B orders with A", fisher_p="Fisher p")),
-    {"Lift": lambda v: f"{v:.2f}×", "% of B orders with A": pct0, "Fisher p": pval,
+                         lift="Lift", conf_b_to_a="% of B orders with A", chisq_p="Chi-square p")),
+    {"Lift": lambda v: f"{v:.2f}×", "% of B orders with A": pct0, "Chi-square p": pval,
      "Orders together": str})
 
 # ---------------- Pages ----------------
@@ -390,12 +399,12 @@ overview = f"""
     <h2>How does performance vary among the sales representatives?</h2>
     <p class="answer"><b>Top reps win on volume, not deal size.</b> {top3.Rep.iloc[0]} leads with
     {money(top3.net_revenue.iloc[0])}. Revenue gaps come from how many orders and customers each rep
-    handles; average order values don't differ meaningfully. Most reps grew sharply by 1998, but two
-    stayed flat.</p>
+    handles. Most reps' average order values match the rest of the team; only {aov_sig_names}
+    write significantly smaller orders. Most reps grew sharply by 1998, but two stayed flat.</p>
     <div class="stats">
       <div class="stat"><b>{top3.revenue_share.sum():.0%}</b><span>of revenue from the top three reps</span></div>
       <div class="stat"><b>{uk.revenue_share.sum():.0%}</b><span>of revenue from the four-person UK office</span></div>
-      <div class="stat"><b>p = {r2['kruskal_p']:.2f}</b><span>no real difference in order value between reps</span></div>
+      <div class="stat"><b>{len(aov_sig)} / {len(reps)}</b><span>reps whose order value differs significantly from the rest (both lower)</span></div>
     </div>
     <p><b>Implication:</b> coach for customer coverage and order frequency rather than upselling.</p>
     <a class="more" href="sales-reps.html">See the sales rep analysis →</a>
@@ -475,13 +484,14 @@ render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
   <h3>Approach</h3>
   <p>For each of the 9 employees who took orders: net revenue (after discounts), orders, distinct customers,
   average order value, discount rate given, and the share of orders shipped after the required date.
-  A Kruskal-Wallis test checks whether order values differ between reps. Growth is compared as monthly
+  A t-test (Welch's, which allows unequal spreads) compares each rep's average order value with the
+  average of all other reps' orders. Growth is compared as monthly
   revenue because the data covers only {r2['months'][1996]} months of 1996 and {r2['months'][1998]} of 1998.</p>
 
   <div class="stats">
     <div class="stat"><b>{top3.revenue_share.sum():.0%}</b><span>of revenue from the top three reps ({', '.join(top3.Rep.str.split().str[0])})</span></div>
     <div class="stat"><b>{uk.revenue_share.sum():.0%}</b><span>of revenue from the four-person UK office</span></div>
-    <div class="stat"><b>p = {r2['kruskal_p']:.2f}</b><span>order values do not differ meaningfully between reps</span></div>
+    <div class="stat"><b>{len(aov_sig)} / {len(reps)}</b><span>reps whose average order value differs significantly from the rest — {aov_sig_names}, both lower</span></div>
   </div>
 
   <p class="chart-title">Top reps win on number of orders, not order size</p>
@@ -496,8 +506,9 @@ render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
   <h3>Main finding</h3>
   <p class="finding">Revenue differences between reps come from <em>how many orders and customers</em> they
   handle, not deal size. {top3.Rep.iloc[0]} leads with {money(top3.net_revenue.iloc[0])}
-  ({pct(top3.revenue_share.iloc[0])}) from {top3.orders.iloc[0]} orders, while average order values are
-  statistically indistinguishable across reps. Most reps roughly doubled their monthly revenue from 1997 to
+  ({pct(top3.revenue_share.iloc[0])}) from {top3.orders.iloc[0]} orders, and for 7 of the 9 reps the t-test
+  finds no significant difference between their average order value and the rest of the team's. The two
+  exceptions write significantly <em>smaller</em> orders ({aov_sig_detail}). Most reps roughly doubled their monthly revenue from 1997 to
   1998, but Michael Suyama and Steven Buchanan stayed flat. Robert King gives the deepest discounts
   ({pct(reps.set_index('Rep').discount_given_pct['Robert King'])}) and Anne Dodsworth has the highest late-shipment
   rate ({pct(reps.set_index('Rep').late_rate['Anne Dodsworth'])}).</p>
@@ -505,7 +516,8 @@ render_page("sales-reps.html", "Sales reps · Northwind Sales Insights",
   <p class="implication">Focus coaching and territory planning on customer coverage and order frequency rather
   than upselling. The UK office's lower totals partly reflect that two of its four people are managers —
   review its capacity before judging individuals. Follow up specifically on Suyama's and Buchanan's flat
-  growth, King's discounting, and Dodsworth's late shipments.</p>
+  growth, why Suyama's and Callahan's orders run smaller, King's discounting, and Dodsworth's late
+  shipments.</p>
   <p class="caveat">Caveat: Andrew Fuller (VP) and Steven Buchanan (manager) also carry management duties, and
   customer assignments are not random, so raw totals are not a pure measure of individual skill.</p>
 </section>""" + pager(TABS[1], TABS[3]))
@@ -521,7 +533,8 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   <h3>Approach</h3>
   <p>Market-basket analysis over {r3['n_orders']} orders: for every product pair seen together in at least
   5 orders, compute <em>lift</em> (how much more often they co-occur than if bought independently) and
-  confidence. A one-sided Fisher exact test checks whether each pair co-occurs more often than chance.
+  confidence. A chi-square test checks whether each pair appears together more often than it would by
+  chance if customers chose the two products independently.
   The same lift is computed between product categories.</p>
 
   <div class="stats">
@@ -542,7 +555,7 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   <h3>Main finding</h3>
   <p class="finding">One pairing stands well above the rest: Sir Rodney's Scones and Sirop d'érable appear together
   in {int(top.orders_together)} orders — {top.lift:.1f}× more than chance, and {top.conf_b_to_a:.0%} of
-  maple-syrup orders also include the scones (Fisher {ptxt(top.fisher_p)}). Several cheese and dessert pairs
+  maple-syrup orders also include the scones (chi-square {ptxt(top.chisq_p)}). Several cheese and dessert pairs
   (e.g. Gorgonzola Telino with Pavlova or Mozzarella) are 2–3× chance but rest on only 5–7 orders. At the category
   level every pair sits below 1.0: customers place focused orders rather than mixed baskets.</p>
   <h3>Business implication</h3>
@@ -550,5 +563,6 @@ render_page("bundles.html", "Bundles · Northwind Sales Insights",
   cheese/dessert pairs as hypotheses to test with a small promotion rather than as established patterns. Because
   orders are small and focused, broad cross-category bundling is unlikely to pay off.</p>
   <p class="caveat">Caveat: with 77 products and a median of 2 items per order, most pairs are rare, so lift
-  estimates for low-count pairs are unstable.</p>
+  estimates for low-count pairs are unstable. The chi-square test is also only approximate when counts are
+  this small, so treat pairs with p-values near 0.05 as borderline.</p>
 </section>""" + pager(TABS[2], None))

@@ -130,11 +130,11 @@ def q2_reps():
             reps (pandas.DataFrame): Orders, customers, net revenue,
                 average order value, late-shipment rate, discount
                 given, revenue share and revenue per customer per rep,
-                sorted by net revenue.
+                plus the average order value of all other reps' orders
+                and a Welch t-test p-value comparing the two, sorted
+                by net revenue.
             run_rate (pandas.DataFrame): Net revenue per month for
                 each year, rows in the same order as ``reps``.
-            kruskal_p (float): Kruskal-Wallis p-value for differences
-                in order value between reps.
             months (pandas.Series): Months with orders in each year.
     """
     o = orders.merge(details.groupby("OrderID").agg(net=("NetRevenue", "sum"),
@@ -155,19 +155,25 @@ def q2_reps():
     reps["rev_per_customer"] = reps.net_revenue / reps.customers
     reps = reps.drop(columns="gross").sort_values("net_revenue", ascending=False)
 
+    # Does each rep's order size differ from everyone else's? Welch t-test
+    # (unequal variances) of the rep's orders against all other reps' orders.
+    rest_aov, t_p = [], []
+    for rep in reps.Rep:
+        mine, rest = o.loc[o.Rep == rep, "net"], o.loc[o.Rep != rep, "net"]
+        rest_aov.append(rest.mean())
+        t_p.append(stats.ttest_ind(mine, rest, equal_var=False).pvalue)
+    reps["avg_order_value_others"] = rest_aov
+    reps["aov_t_p"] = t_p
+
     # 1996 covers Jul-Dec and 1998 covers Jan-May, so compare monthly run-rates.
     months = o.groupby("Year").OrderDate.apply(lambda s: s.dt.to_period("M").nunique())
     yearly = o.pivot_table(index="Rep", columns="Year", values="net", aggfunc="sum").fillna(0)
     run_rate = yearly.div(months, axis=1)
     run_rate.columns = [f"monthly_{c}" for c in run_rate.columns]
 
-    # Does order size explain the gap between reps? (ANOVA on order value by rep)
-    anova = stats.kruskal(*[g.net.values for _, g in o.groupby("Rep")])
-
     reps.to_csv(OUT / "q2_reps.csv", index=False)
     run_rate.to_csv(OUT / "q2_monthly_run_rate.csv")
-    return dict(reps=reps, run_rate=run_rate.loc[reps.Rep], kruskal_p=anova.pvalue,
-                months=months)
+    return dict(reps=reps, run_rate=run_rate.loc[reps.Rep], months=months)
 
 
 # ---------- Q3: Which products are bought together? ----------
@@ -183,7 +189,7 @@ def q3_bundles(min_orders=5):
         dict: Results keyed as follows.
             pairs (pandas.DataFrame): Pairs with at least
                 ``min_orders`` shared orders, with support, confidence
-                each way, lift and one-sided Fisher p-value, sorted
+                each way, lift and chi-square test p-value, sorted
                 by lift.
             n_orders (int): Orders analyzed.
             multi_share (float): Share of orders with 2+ products.
@@ -206,12 +212,12 @@ def q3_bundles(min_orders=5):
         if c < min_orders:
             continue
         sa, sb = item_cnt[a] / n, item_cnt[b] / n
-        # One-sided Fisher test: is the pair seen together more often than chance?
+        # Chi-square test: does the pair co-occur more or less often than chance?
         table = [[c, item_cnt[a] - c], [item_cnt[b] - c, n - item_cnt[a] - item_cnt[b] + c]]
-        p = stats.fisher_exact(table, alternative="greater")[1]
+        p = stats.chi2_contingency(table)[1]
         rows.append(dict(product_a=a, product_b=b, orders_together=c, support=c / n,
                          conf_a_to_b=c / item_cnt[a], conf_b_to_a=c / item_cnt[b],
-                         lift=(c / n) / (sa * sb), fisher_p=p))
+                         lift=(c / n) / (sa * sb), chisq_p=p))
     pairs = pd.DataFrame(rows).sort_values(["lift", "orders_together"], ascending=False)
 
     multi = (baskets.str.len() > 1).mean()
@@ -255,7 +261,7 @@ if __name__ == "__main__":
     print("\n=== Q2 REPS ===")
     print(r2["reps"].round(3).to_string(index=False))
     print(r2["run_rate"].round(0))
-    print("months per year:", r2["months"].to_dict(), f"Kruskal p={r2['kruskal_p']:.2g}")
+    print("months per year:", r2["months"].to_dict())
 
     r3 = q3_bundles()
     print("\n=== Q3 BUNDLES ===")
