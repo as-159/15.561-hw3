@@ -459,9 +459,8 @@ render_page("discounts.html", "Discounts · Northwind Sales Insights",
   13–18% increase, while the 10% tier shows no lift at all.</p>
   <h3>Business implication</h3>
   <p class="implication">Treat discounts as a tool for moving units (e.g. clearing stock), not for growing
-  revenue. Since 20–25% discounts move no more volume than 15%, cap routine discounts at 15% and require
-  sign-off above it. Review how the 10% tier is used — it gives up price with no measurable volume gain.</p>
-  <p class="caveat">Caveat: this is association, not causation — reps may grant discounts <em>because</em>
+  revenue. Since 20-25% discounts move no more volume than 15%, given plateued quantity uplift. Review how the 10% tier is used — it gives up price with no measurable volume gain.</p>
+  <p class="caveat">Caveat: quantity uplift could be association, not causation — reps may grant discounts <em>because</em>
   a customer is already placing a large order. Some products have only one or two lines on one side,
   so individual dots are noisy; the conclusion rests on the paired test across all products.</p>
 </section>""" + pager(None, TABS[2]))
