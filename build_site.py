@@ -422,7 +422,6 @@ overview = f"""
     <div class="stats">
       <div class="stat"><b>{top.lift:.1f}×</b><span>scones + maple syrup vs. chance</span></div>
       <div class="stat"><b>{top.conf_b_to_a:.0%}</b><span>of maple-syrup orders also include the scones</span></div>
-      <div class="stat"><b>{r3['basket_size']['50%']:.0f}</b><span>products in the median order</span></div>
     </div>
     <p><b>Implication:</b> launch a scones-and-syrup bundle; test the weaker cheese/dessert pairs first.</p>
     <a class="more" href="bundles.html">See the bundling analysis →</a>
